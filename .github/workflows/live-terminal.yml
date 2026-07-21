@@ -1,7 +1,14 @@
 name: Live Terminal (tmate)
 
 on:
-  workflow_dispatch: # Allows you to run this manually from the Actions tab
+  workflow_dispatch:
+  schedule:
+    # Run every 5 minutes (will be queued if one is already running)
+    - cron: '*/5 * * * *'
+
+concurrency:
+  group: always-on-terminal
+  cancel-in-progress: false
 
 jobs:
   terminal-job:
