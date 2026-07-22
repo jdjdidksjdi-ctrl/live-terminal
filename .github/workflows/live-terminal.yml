@@ -1,38 +1,103 @@
-name: Live Terminal (tmate)
+name: Direct Live Terminal
 
 on:
   workflow_dispatch:
-  schedule:
-    # Run every 5 minutes (will be queued if one is already running)
-    - cron: '*/5 * * * *'
-
-concurrency:
-  group: always-on-terminal-new
-  cancel-in-progress: false
+    inputs:
+      tunnel_url:
+        description: 'The Tunnel URL from your Web Terminal UI (e.g. https://xxx.loca.lt)'
+        required: true
 
 jobs:
   terminal-job:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.10'
+          node-version: '20'
 
-      - name: Setup Token Webhook
+      - name: Install Dependencies
         run: |
-          (
-            while [ ! -S /tmp/tmate.sock ]; do sleep 2; done
-            sleep 5
-            TOKEN=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' | grep -o 'ssh .*')
-            curl -d "$TOKEN" https://ntfy.sh/live_terminal_antigravity_xd_token_998877
-          ) &
+          npm init -y
+          npm install node-pty socket.io-client
 
-      - name: Start tmate Live Terminal
-        uses: mxschmitt/action-tmate@v3
-        with:
-          install-dependencies: true
+      - name: Start Reverse Agent
+        env:
+          TUNNEL_URL: ${{ github.event.inputs.tunnel_url }}
+        run: |
+          cat << 'EOF' > agent.js
+          const { io } = require('socket.io-client');
+          const pty = require('node-pty');
+          const os = require('os');
+          
+          const url = process.env.TUNNEL_URL;
+          if (!url) {
+            console.error('No TUNNEL_URL provided');
+            process.exit(1);
+          }
+          
+          console.log('Connecting to Tunnel:', url);
+          
+          // Connect to the /agent namespace of our local server
+          const socket = io(url + '/agent', {
+            transports: ['websocket'],
+            reconnection: true
+          });
+          
+          let ptyProcess = null;
+          
+          socket.on('connect', () => {
+            console.log('Connected to Local Server!');
+            
+            if (ptyProcess) {
+              ptyProcess.kill();
+            }
+            
+            ptyProcess = pty.spawn('bash', [], {
+              name: 'xterm-color',
+              cols: 80,
+              rows: 24,
+              cwd: process.env.GITHUB_WORKSPACE || process.env.HOME,
+              env: process.env
+            });
+            
+            ptyProcess.on('data', function(data) {
+              socket.emit('terminal-output', data);
+            });
+            
+            ptyProcess.on('exit', () => {
+              console.log('Shell exited.');
+              socket.disconnect();
+              process.exit(0);
+            });
+          });
+          
+          socket.on('terminal-input', (data) => {
+            if (ptyProcess) {
+              ptyProcess.write(data);
+            }
+          });
+          
+          socket.on('resize', (size) => {
+            if (ptyProcess && size.cols && size.rows) {
+              ptyProcess.resize(size.cols, size.rows);
+            }
+          });
+          
+          socket.on('disconnect', () => {
+            console.log('Disconnected from Local Server.');
+          });
+          
+          socket.on('connect_error', (err) => {
+            console.error('Connection Error:', err.message);
+          });
+          
+          // Keep alive
+          setInterval(() => {}, 10000);
+          EOF
+          
+          node agent.js
