@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Web Terminal (tmate)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 17 10 11 4 5"></polyline>
+                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg>
+                <h2>Terminal Bridge</h2>
+            </div>
+            
+            <div class="connection-form">
+                <div class="form-header">
+                    <h3>Connection Status</h3>
+                    <p>The server connects automatically when GitHub Actions generates a tmate token.</p>
+                </div>
+
+                <div class="instructions">
+                    <ol>
+                        <li>Trigger the GitHub Action "Live Terminal"</li>
+                        <li>Wait for it to boot (approx. 20s)</li>
+                        <li>Click "Connect Terminal" below once it's ready</li>
+                    </ol>
+                </div>
+                
+                <button id="connectBtn" class="connect-btn" disabled>Waiting for GitHub...</button>
+            </div>
+
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Agent Offline</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="terminal-header">
+                <div class="window-controls">
+                    <div class="dot close"></div>
+                    <div class="dot minimize"></div>
+                    <div class="dot maximize"></div>
+                </div>
+                <div class="terminal-title">bash - live-terminal</div>
+            </div>
+            <div id="terminal-container"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
