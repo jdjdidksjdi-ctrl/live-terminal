@@ -45,7 +45,11 @@ jobs:
           // Connect to the /agent namespace of our local server
           const socket = io(url + '/agent', {
             transports: ['websocket'],
-            reconnection: true
+            reconnection: true,
+            extraHeaders: {
+              'Bypass-Tunnel-Reminder': 'true',
+              'User-Agent': 'Mozilla/5.0'
+            }
           });
           
           let ptyProcess = null;
